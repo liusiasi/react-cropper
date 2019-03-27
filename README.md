@@ -523,7 +523,7 @@ export default class EidtBanner extends PureComponent {
 }
 ```
 
-# 五.实现中的细节见我的博客
+# 五.实现中的细节可以见我的博客
 
-[我的博客](https://blog.csdn.net/qq_36400206) 
+[我的博客](https://blog.csdn.net/qq_36400206/article/details/88672171) 
 
