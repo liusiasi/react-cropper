@@ -10,7 +10,7 @@ import Cropper from 'react-cropper'
 
 # 二.主要的实现的功能
 使用antdesign的upload组件进行上传图片，并调用react-cropper组件实现固定长和宽的截图，将截图的结果以FILE格式传给后台。实现效果如下。
-![image](https://github.com/liusiasi/react-cropper/raw/master/picture/first.png)
+![image](https://github.com/liusiasi/react-cropper/raw/master/picture/second.png)
 可以上传多张图片。
 
 # 三.主要的思路
