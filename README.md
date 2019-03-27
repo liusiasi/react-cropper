@@ -2,10 +2,12 @@
 在React/dva框架下，使用react-cropper和antDesign的Upload组件实现的一个图片裁剪组件
 
 # 一.主要的实现的功能
-利用React组件化的思想封装一个裁剪并上传图片的组件，其中使用antdesign的upload组件进行上传图片，并调用react-cropper组件实现固定长和宽的截图，将截图的结果以FILE格式上传给后台。后台返回图片的路径，显示在Upload组件上，并且可以删除和预览已经上传的图片。实现截图效果如下。
+利用React组件化的思想封装一个裁剪并上传图片的组件，其中使用antDesign的Upload组件进行上传图片，并调用react-cropper组件实现固定裁剪框的长和宽的截图，将截图的结果以FILE格式上传给后台。后台返回图片的路径，显示在Upload组件上，并且可以删除和预览已经上传的图片。实现截图效果如下。
 ![image](https://github.com/liusiasi/react-cropper/raw/master/picture/first.png)
+
 上传成功后可以通过Upload组件预览和删除，效果如下。
-    ![image](https://github.com/liusiasi/react-cropper/raw/master/picture/second.png)
+![image](https://github.com/liusiasi/react-cropper/raw/master/picture/second.png)
+    
 在一个广告管理的页面引用该组件，实现上传广告图片按照指定的尺寸的功能，广告管理页面如下。
 ![image](https://github.com/liusiasi/react-cropper/raw/master/picture/third.png)
 
@@ -19,7 +21,7 @@ import "cropperjs/dist/cropper.css"
 import Cropper from 'react-cropper'
 
 # 三.主要的思路
-首先构建一个CropperUpload组件，该组件接收截图框的长，宽，Upload样式模式，初始图片列表四个参数。该组件主要实现上传可截图的图片的功能，在Upload组件的beforeUpload中用FileReader读取要上传的文件的base64码，并返回false阻止Upload组件自动上传，将文件码赋值给cropper组件，用cropper进行截图，截图之后，点击保存，触发saveImage函数，将cropper返回的base64码转换成File格式传向后台，并接收后台传回的图片路径，实现图片的预览。
+首先构建一个CropperUpload组件，该组件接收截图框的长，宽，Upload样式模式，初始图片列表四个参数。该组件主要实现上传可截图的图片的功能，在Upload组件的beforeUpload中用FileReader读取要上传的文件的base64码，并返回false阻止Upload组件自动上传，将文件码赋值给cropper组件，用cropper进行截图，截图之后，点击保存，触发saveImg函数，将cropper返回的base64码转换成File格式传向后台，并接收后台传回的图片路径，实现图片的预览。
 
 # 四.具体的实现
 组件CropperUpload的代码如下CropperUpload.js
