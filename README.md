@@ -1,6 +1,16 @@
-# react-cropper antDesign
-在React/dva框架下，使用react-cropper和antDesign的Upload组件实现的图片裁剪插件
-# 一.首先安装react-cropper插件
+# react-cropper
+在React/dva框架下，使用react-cropper和antDesign的Upload组件实现的一个图片裁剪组件
+
+# 一.主要的实现的功能
+利用React组件化的思想封装一个裁剪并上传图片的组件，其中使用antdesign的upload组件进行上传图片，并调用react-cropper组件实现固定长和宽的截图，将截图的结果以FILE格式上传给后台。后台返回图片的路径，显示在Upload组件上，并且可以删除和预览已经上传的图片。实现截图效果如下。
+![image](https://github.com/liusiasi/react-cropper/raw/master/picture/first.png)
+上传成功后可以通过Upload组件预览和删除，效果如下。
+    ![image](https://github.com/liusiasi/react-cropper/raw/master/picture/second.png)
+在一个广告管理的页面引用该组件，实现上传广告图片按照指定的尺寸的功能，广告管理页面如下。
+![image](https://github.com/liusiasi/react-cropper/raw/master/picture/third.png)
+
+
+# 二.首先安装react-cropper插件
 npm install --save react-cropper
 执行该命令以后，下载react-cropper依赖信息自动更新到package.json中
 在使用该插件的代码中需要进行引入
@@ -8,17 +18,11 @@ npm install --save react-cropper
 import "cropperjs/dist/cropper.css"
 import Cropper from 'react-cropper'
 
-# 二.主要的实现的功能
-使用antdesign的upload组件进行上传图片，并调用react-cropper组件实现固定长和宽的截图，将截图的结果以FILE格式传给后台。实现效果如下。
-![image](https://github.com/liusiasi/react-cropper/raw/master/picture/first.png)
-可以上传多张图片。
-![image](https://github.com/liusiasi/react-cropper/raw/master/picture/second.png)
-
 # 三.主要的思路
-首先构建一个CropperUpload组件，该组件接收截图框的长，宽，Upload样式模式，初始图片列表四个参数。该组件主要实现上传可截图的图片的功能，在Upload组件的beforeUpload中用FileReader读取要上传的文件的base64码，并返回false阻止Upload组件自动上传，将文件码赋值给cropper组件，用cropper进行截图，截图之后，将cropper返回的base64码转换成File格式传向后台。
+首先构建一个CropperUpload组件，该组件接收截图框的长，宽，Upload样式模式，初始图片列表四个参数。该组件主要实现上传可截图的图片的功能，在Upload组件的beforeUpload中用FileReader读取要上传的文件的base64码，并返回false阻止Upload组件自动上传，将文件码赋值给cropper组件，用cropper进行截图，截图之后，点击保存，触发saveImage函数，将cropper返回的base64码转换成File格式传向后台，并接收后台传回的图片路径，实现图片的预览。
 
 # 四.具体的实现
-组件CropperUpload的代码如下
+组件CropperUpload的代码如下CropperUpload.js
 ```javascript
 import React, { PureComponent } from 'react';
 import moment from 'moment';
@@ -114,21 +118,6 @@ class CropperUpload extends PureComponent {
 
   }
 
-  //将base64码转化成blob格式
-  convertBase64UrlToBlob(base64Data) {
-    var byteString;
-    if (base64Data.split(',')[0].indexOf('base64') >= 0) {
-      byteString = atob(base64Data.split(',')[1]);
-    } else {
-      byteString = unescape(base64Data.split(',')[1]);
-    }
-    var mimeString = base64Data.split(',')[0].split(':')[1].split(';')[0];
-    var ia = new Uint8Array(byteString.length);
-    for (var i = 0; i < byteString.length; i++) {
-      ia[i] = byteString.charCodeAt(i);
-    }
-    return new Blob([ia], { type: this.state.selectImgSuffix });
-  }
   //将base64码转化为FILE格式
   dataURLtoFile(dataurl, filename) {
     var arr = dataurl.split(','),
@@ -193,7 +182,6 @@ class CropperUpload extends PureComponent {
       </div> :
       <Button>
         <Icon type="upload" />选择上传</Button>
-
     return (
       <div>
         <Upload
@@ -240,178 +228,294 @@ class CropperUpload extends PureComponent {
 
 export default CropperUpload;
 ```
-引用CropperUpload的页面如下
+
+引用CropperUpload的广告管理页面如下EidtBanner.js
 ```javascript
 import React, { PureComponent } from 'react';
 import { routerRedux, Route, Switch } from 'dva/router';
-import { Upload,Spin, Card, Button, Form, Icon, Col, Row, DatePicker, TimePicker, Input, Select, Popover } from 'antd';
+import { Spin, Card, Button, Form, Icon, Upload, Col, Row, DatePicker, TimePicker, Input, Modal, Select, Popover, Radio } from 'antd';
+import moment from 'moment';
 import { connect } from 'dva';
-import PageHeaderLayout from '../../../layouts/PageHeaderLayout';
-import PartModal from '../../../components/Part/partModal';
+import PageHeaderLayout from '../../layouts/PageHeaderLayout';
+import FooterToolbar from '../../components/FooterToolbar';
+import styles from './SupplierElement.less';
+import stylesDisabled from './ViewProduct.less';
 import { message } from 'antd';
-import stylesDisabled from './AddPart.less';
+import CropperUpload from '../../components/Upload/CropperUpload';
+
+
+const dateFormat = 'YYYY/MM/DD';
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 const FormItem = Form.Item;
-import CropperUpload from '../../../components/Upload/CropperUpload';
+const { TextArea } = Input;
 
 const fieldLabels = {
-  name: '标签名称',
-  isActive: '状态',
-};
-
-const formItemLayout = {
-  labelCol: {
-    xs: { span: 24 },
-    sm: { span: 7 },
-  },
-  wrapperCol: {
-    xs: { span: 24 },
-    sm: { span: 12 },
-    md: { span: 5 },
-  },
-};
-
-const submitFormLayout = {
-  wrapperCol: {
-    xs: { span: 24, offset: 0 },
-    sm: { span: 10, offset: 7 },
-  },
+  title: '标题',
+  img: '广告图片',
+  link: '广告内容图片',
+  startTime: '上架时间',
+  endTime: '下架时间',
+  order: '排序',
+  state: '状态',
+  createDate: '创建时间',
+  modifyDate: '编辑时间',
 };
 
 @connect(state => ({
-  changeData: state.modifyDataCQX.changeData,
-  submitLoading:state.modifyDataCQX.loading,
+  bannerobj: state.bannerDetail.bannerData.obj,
+  detailLoading: state.bannerDetail.loading,
+  success: state.addBannerData.changeData.success,
+  msg: state.addBannerData.changeData.msg,
+  submitLoading: state.addBannerData.loading,
 }))
 @Form.create()
-export default class LabelManageNew extends PureComponent {
+export default class EidtBanner extends PureComponent {
   constructor(props) {
     super(props);
     this.state = {
-      labelName: "",
-      status: "",
-      iconUrl:[],
+      data: [],
+      time: false,
+      img: [],
+      link: [],
+      isEdit: true,
     }
   }
-
-  componentWillMount() {
+  componentDidMount() {
     const { dispatch } = this.props;
-    if (this.props.location.params) {
-        this.setState({
-          labelName: this.props.location.params.record.productName,
-          status: this.props.location.params.record.isActive,
-        });
-
-      if(this.props.location.params.record.iconUrl){
-        let iconUrl=[];
-        iconUrl.push({
+    const id = this.props.location.params.id;
+    this.setState({
+      isEdit: this.props.location.params.isEdit,
+    });
+    const data = { id };
+    const values = Object.keys(data)
+      .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(data[k]))
+      .join('&');
+    dispatch({
+      type: 'bannerDetail/getDetail',
+      payload: values,
+      callback: () => {
+        let bannerdetail = this.props.bannerobj;
+        if (bannerdetail.img) {
+          let imageList = [];
+          imageList.push({
             uid: -1,
-            name: 'iconUrl.png',
+            name: 'xxx.png',
             status: 'done',
-            url:this.props.location.params.record.iconUrl,
-        });
-        this.setState({
-          iconUrl,
-        });
-    }
-  }
+            url: bannerdetail.img,
+          });
+          this.setState({
+            img: imageList,
+          });
+        }
+
+        if (bannerdetail.link) {
+          let iconUrl = [];
+          iconUrl.push({
+            uid: -1,
+            name: 'img.png',
+            status: 'done',
+            url: bannerdetail.link,
+          });
+          this.setState({
+            link: iconUrl,
+          });
+        }
+      },
+    });
   }
 
   returnClick = () => {
     this.props.history.goBack();
   }
+
   validate = () => {
     const { form, dispatch, submitting } = this.props;
     const { getFieldDecorator, validateFieldsAndScroll, getFieldsError } = form;
     validateFieldsAndScroll((error, values) => {
       if (!error) {
-          let iconUrl='';
-          if (this.state.iconUrl.length) {
-            iconUrl=this.state.iconUrl[0].url;
-          }
-          else{
-              message.error("请添加分区图标");
-              return;
-          }
-          values.iconUrl=iconUrl;
-          // var data = Object.keys(values)
-          //   .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(values[k]))
-          //   .join('&');
-          var data={
-            ID:this.props.location.params.record.id,
-            operatorName:this.props.location.params.record.operatorName,
-            labelName:values.labelName,
-            status:values.status,
-            iconURL:values.iconUrl,
-          }
-          dispatch({
-            type: 'modifyDataCQX/editLabelManagementFunc',
-            payload: data,
-            callback: () => {
-              const { changeData  } = this.props;
-              if (changeData.success === true) {
-                message.success(changeData.msg);
-                this.props.history.goBack();
-              } else {
-                message.error(changeData.msg);
-              }
-            },
-          });
+        delete values.startTime;
+        delete values.endTime;
+        delete values.createDate;
+        delete values.modifyDate;
+        if (!this.state.img || this.state.img.length == 0) {
+          message.error("请添加广告图片");
+          return;
+        }
+        else {
+          values.img = this.state.img[0].url;
+        }
+        if (!this.state.link || this.state.link.length == 0) {
+          message.error("请添加广告内容图片");
+          return;
+        }
+        else {
+          values.link = this.state.link[0].url;
+        }
+
+        var data = Object.keys(values)
+          .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(values[k]))
+          .join('&');
+        dispatch({
+          type: 'addBannerData/modifyBanner',
+          payload: data,
+          callback: () => {
+            const { success, msg } = this.props;
+            if (success === true) {
+              message.success(msg);
+              this.props.history.goBack();
+            }
+            else {
+              message.error(msg);
+            }
+          },
+        });
       }
     });
   }
-  //标签内容图片的回调函数
-  ChangeIconUrl = (value) => {
+
+  //广告图片的回调函数
+  ChangeImage = (value) => {
     this.setState({
-      iconUrl: value,
+      img: value,
+    })
+  }
+  //广告内容图片的回调函数
+  ChangeBanner = (value) => {
+    this.setState({
+      link: value,
     })
   }
   render() {
-    const { form, dispatch } = this.props;
+    const { bannerobj, detailLoading } = this.props;
+    const { isEdit } = this.state;
+    const { getFieldDecorator, getFieldValue } = this.props.form;
     const { submitLoading } = this.props;
-    const { getFieldDecorator, validateFieldsAndScroll, getFieldsError } = form;
+    const { fileList } = this.state;
+    const uploadButton = (
+      <div>
+        <Icon type="plus" />
+        <div className="ant-upload-text">Upload</div>
+      </div>
+    );
+    const formItemLayout = {
+      labelCol: { span: 6 },
+      wrapperCol: { span: 6 },
+    };
+    const submitFormLayout = {
+      wrapperCol: {
+        xs: { span: 24, offset: 0 },
+        sm: { span: 10, offset: 7 },
+      },
+    };
+    const dateFormat = 'YYYY-MM-DD';
     return (
-      <PageHeaderLayout >
-        <Card bordered={false} title="标签信息">
-          <Form hideRequiredMark className={stylesDisabled.disabled}>
-            <FormItem {...formItemLayout} label={fieldLabels.name} >
-              {getFieldDecorator('labelName', {
-                rules: [{ required: true, message: '请输入标签名称' }],
-                initialValue: this.state.labelName,
-              })
-                (<Input placeholder="请输入标签名称" />)
-              }
-            </FormItem>
-            <FormItem {...formItemLayout} label={fieldLabels.isActive} >
-              {getFieldDecorator('status', {
-                rules: [{ required: true, message: '请输入状态' }],
-                initialValue: this.state.status,
-              })
-                (<Select style={{ width: 100 }}>
-                  <Option value={true}>有效</Option>
-                  <Option value={false}>无效</Option>
-                </Select>)
-              }
-            </FormItem>
-            <FormItem  {...formItemLayout} label='标签图标'>
-            <CropperUpload
-                  pattern={1}//模式分为三种，1为只能上传一张图片，2为传一张图片，并且可以预览，3为传多张图片
+      <PageHeaderLayout>
+        {
+          detailLoading ? <div><Spin /></div> :
+            <Form layout='horizontal'>
+              <FormItem
+
+              >
+                {
+                  getFieldDecorator('id', {
+                    initialValue: bannerobj.id,
+                  })(<Input type='hidden' />)
+                }
+              </FormItem>
+              <FormItem {...formItemLayout} label={fieldLabels.title}>
+                {getFieldDecorator('title', {
+
+                  rules: [{ required: true, message: '请输入标题' }],
+                  initialValue: bannerobj.title,
+                })
+                  (<Input placeholder="请输入标题" />)}
+              </FormItem>
+
+              <FormItem {...formItemLayout} label={fieldLabels.order}>
+                {getFieldDecorator('order', {
+                  rules: [{ required: true, message: '请输入排序' }],
+                  initialValue: bannerobj.order,
+                })
+                  (<Input placeholder="请输入排序" />)}
+              </FormItem>
+
+              <FormItem {...formItemLayout} label={fieldLabels.startTime}>
+                {getFieldDecorator('startTime', {
+                  rules: [{ required: true, message: '请输入上架时间' }],
+                  initialValue: moment(bannerobj.startTime).format('YYYY-MM-DD HH:mm:ss'),
+
+                })(
+                  <Input disabled={true} />
+                )}
+              </FormItem>
+
+              <FormItem {...formItemLayout} label={fieldLabels.endTime}>
+                {getFieldDecorator('endTime', {
+                  rules: [{ required: true, message: '请输入下架时间' }],
+                  initialValue: moment(bannerobj.endTime).format('YYYY-MM-DD HH:mm:ss'),
+
+                })(
+                  <Input disabled={true} />
+                )}
+              </FormItem>
+              <FormItem {...formItemLayout} label={fieldLabels.createDate}>
+                {getFieldDecorator('createDate', {
+                  rules: [{ required: true, message: '请输入创建时间' }],
+                  initialValue: moment(bannerobj.createDate).format('YYYY-MM-DD HH:mm:ss'),
+
+                })(
+                  <Input disabled={true} />
+                )}
+              </FormItem>
+
+              <FormItem {...formItemLayout} label={fieldLabels.modifyDate}>
+                {getFieldDecorator('modifyDate', {
+                  rules: [{ required: true, message: '请输入编辑时间' }],
+                  initialValue: moment(bannerobj.modifyDate).format('YYYY-MM-DD HH:mm:ss'),
+
+                })(
+                  <Input disabled={true} />
+                )}
+              </FormItem>
+              <FormItem {...formItemLayout} label={fieldLabels.state}>
+                {getFieldDecorator('state', {
+                  rules: [{ required: true, message: '请选择状态' }],
+                  initialValue: bannerobj.state,
+                })(
+                  <Select style={{ width: 100 }} >
+                    <Option value={true}>有效</Option>
+                    <Option value={false}>无效</Option>
+                  </Select>
+                )}
+              </FormItem>
+
+
+              <FormItem {...formItemLayout} label={fieldLabels.img}>
+                <CropperUpload
+                  pattern={2}//模式分为三种，1为只能上传一张图片，2为传一张图片，并且可以预览，3为传多张图片
                   width={375}
-                  height={120}
-                  onChange={this.ChangeIconUrl.bind(this)}
-                  fileList={this.state.iconUrl}
+                  height={200}
+                  onChange={this.ChangeImage.bind(this)}
+                  fileList={this.state.img}
                 />
-            </FormItem>
-            <FormItem {...submitFormLayout} style={{ marginTop: 32 }}>
-              <Button type="primary" onClick={this.validate} loading={submitLoading}>
-                提交 </Button >
-              < Button style={{ marginLeft: 8 }} onClick={this.returnClick} >
-                返回
-            </Button >
-            </FormItem>
-          </Form>
-        </Card>
-      </PageHeaderLayout>
+              </FormItem>
+              <FormItem {...formItemLayout} label={fieldLabels.link}>
+                <CropperUpload
+                  pattern={2}//模式分为三种，1为只能上传一张图片，2为传一张图片，并且可以预览，3为传多张图片
+                  width={375}
+                  height={200}
+                  onChange={this.ChangeBanner.bind(this)}
+                  fileList={this.state.link}
+                />
+              </FormItem>
+              <FormItem {...submitFormLayout} className={styles.hideMarginBottom}>
+                <Button type="primary" onClick={this.validate} loading={submitLoading} >提交</Button >
+
+                <Button type="primary" style={{ marginLeft: 12 }} onClick={this.returnClick}>返回</Button >
+              </FormItem>
+            </Form>}
+      </PageHeaderLayout >
     );
   }
 }
